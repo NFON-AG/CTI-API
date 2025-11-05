@@ -1,0 +1,39 @@
+name: Publish OpenAPI Spec as ReDoc to /docs
+
+on:
+  push:
+    branches: [ main ]
+    paths:
+      - "specs/nfon-cti-api.yaml"
+      - ".github/workflows/publish-redoc.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: write   # needed to commit the generated /docs files
+
+jobs:
+  build-and-commit:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Verify OpenAPI spec exists
+        run: |
+          test -f specs/nfon-cti-api.yaml || (echo "specs/nfon-cti-api.yaml not found" >&2; exit 1)
+
+      - name: Generate ReDoc HTML into /docs
+        run: |
+          mkdir -p docs
+          # Generate index.html
+          npx --yes redoc-cli@latest build specs/nfon-cti-api.yaml \
+            -o docs/index.html \
+            --title "NFON CTI API"
+          # Prevent Jekyll processing
+          touch docs/.nojekyll
+
+      - name: Commit and push /docs
+        uses: stefanzweifel/git-auto-commit-action@v5
+        with:
+          commit_message: "chore(docs): publish ReDoc from nfon-cti-api.yaml"
+          file_pattern: docs/**
