@@ -1,0 +1,822 @@
+openapi: 3.0.1
+info:
+  title: NFON CTI API
+  version: 1.0.0
+  description: 'This API provides PBX data on tenant base. The CTI API currently only supports incoming calls that arrive directly at an extension. Functions such as group calls, skill-based calls or queues are currently not supported. Call scenarios in which a call is forwarded and conferences with several participants are also not supported. Only one device may be assigned to each extension.'
+  termsOfService: https://www.nfon.com/en/legal/gtc
+  contact:
+    name: NFON
+    email: integration@nfon.com
+  license:
+    name: NFON proprietary
+servers:
+  - url: https://providersupportdata.cloud-cfg.com/{version}
+    variables:
+      version:
+        default: v1
+tags:
+  - name: authentication
+    description: Everything about authentication
+  - name: phone extensions
+    description: Data for phone extensions
+paths:
+  /login:
+    post:
+      tags:
+        - authentication
+      summary: Creates a new Token with provided user credentials.
+      operationId: createToken
+      requestBody:
+        description: The Credentials to authenticate the User.
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                username:
+                  type: string
+                password:
+                  type: string
+        required: true
+      responses:
+        '200':
+          description: Valid User, returning tokens.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/tokens'
+        '400':
+          description: Bad Request Body.
+          content: { }
+        '401':
+          description: Invalid User-Credentials.
+          content: {}
+    put:
+      tags:
+        - authentication
+      summary: Refreshes the Token.
+      operationId: refreshAccessToken
+      responses:
+        '200':
+          description: Valid User, returns tokens.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/tokens'
+        '400':
+          description: Bad Request Body.
+          content: { }
+        '401':
+          description: Invalid Tokens.
+          content: { }
+      security:
+        - refresh_token_auth: []
+  /.well-known/jwks.json:
+    get:
+      tags:
+        - authentication
+      description: Provides the public keys to validate the signing of the JWTs.
+      operationId: publicKeyWellKnown
+      responses:
+        '200':
+          description: The JWKS as JSON.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/publicKey'
+  /extensions/phone/data:
+    get:
+      tags:
+        - phone extensions
+      summary: Get the data of phone extensions for a specific tenant, constraint by your credentials.
+      operationId: getPhoneExtensionData
+      responses:
+        '200':
+          description: A list extension data.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/extensionData'
+        '400':
+          description: Invalid ID supplied
+          content: {}
+        '404':
+          description: Extension not found
+          content: {}
+        '405':
+          description: Validation exception
+          content: {}
+      security:
+        - bearer_auth: []
+  /extensions/phone/states:
+    get:
+      tags:
+        - phone extensions
+      summary: Event streams and snapshots of presence and line state changes.
+      description: |-
+        ## Overview
+
+        This endpoint provides information about the `presence` and `line` states.
+
+        ## Usage 
+
+        It is only allowed to get the `state` of users that belong to your K-Account.
+
+        ### Accept Header
+       
+        The reply depends on the content of the `Accept` request header. There are two options:
+
+        * **Event streaming** (default) - the API will send back an SSE event stream if the `Accept` header specifies `text/event-stream` or if it's empty. 
+        On connect the API will first bootstrap the client by sending the latest `state` of the users and after that it will continue to stream `state` changes as they happen.
+
+        * **Single snapshot** if the `Accept` header specifies `application/json`, the API will return a normal JSON reply with an array of all `state` objects at the time of the request.
+
+      operationId: getState
+      security:
+        - bearer_auth: []
+      parameters:
+
+        - in: query
+          name: extension
+          description: "Optional argument only used when delivering a snapshot. Will only deliver the state of the given extensions not a full dump."
+          required: false
+          schema:
+            type: array
+            items:
+              type: string
+      responses:
+        "200":
+          description: |-
+            The reply could be either a Server-Sent Event (SSE) stream of `presence` and `line` updates or a single one-time snapshot of the current `presence` and `line` states of all extensions at the time of the request. 
+            
+            The type of response is controlled by the `Accept` header of the request.
+
+            **Note**: The SSE stream is a stream of JSON **objects**, even though it is visualized as an array (see [OpenAPI 3.1 issue](https://github.com/OAI/OpenAPI-Specification/issues/396#issuecomment-492287488)).
+
+          headers:
+            X-Request-Id:
+              schema:
+                type: string
+              description: Unique identifier used to track this particular request on the backend
+          content:
+            text/event-stream:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/state"
+              examples:
+                event stream (single customer):
+                  value:
+                    - extension: "1001"
+                      customer: "K9999"
+                      presence: "offline"
+                      line: "idle"
+                    - extension: "3123"
+                      customer: "K9999"
+                      presence: "available"
+                      line: "idle"
+                    - extension: "2001"
+                      customer: "K9999"
+                      presence: "available"
+                      line: "in-use"
+                    - extension: "3021"
+                      customer: "K9999"
+                      presence: "dnd"
+                      line: "in-use"
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/state"
+              examples:
+                snapshot:
+                  value:
+                    - extension: "100"
+                      customer: "K0001"
+                      presence: "offline"
+                      line: "idle"
+                    - extension: "420"
+                      customer: "K0001"
+                      presence: "available"
+                      line: "idle"
+                    - extension: "2001"
+                      customer: "K0001"
+                      presence: "available"
+                      line: "in-use"
+                    - extension: "3021"
+                      customer: "K0001"
+                      presence: "dnd"
+                      line: "in-use"
+        "400":
+          $ref: '#/components/responses/BadRequest'
+        "401":
+          $ref: '#/components/responses/Unauthorized'
+        "403":
+          $ref: '#/components/responses/Forbidden'
+        "404":
+          $ref: '#/components/responses/NotFound'
+        "500":
+          $ref: '#/components/responses/ServerError'
+
+  /extensions/phone/calls:
+    post:
+      tags:
+        - phone extensions
+      summary: Initiate new call
+      description: |-
+        ## Overview
+        This endpoint can be used to initiate voice calls.
+
+        ## Usage
+
+        The reply depends on the content of the `Accept` request header. 
+        There are two options:
+
+        ### Single event (default) 
+        if the `Accept` header specifies `application/json` or if it's empty, the API will reply with `202 Accepted` and a body, which contains a normal JSON object representing the initial `start` event.
+        The `start` event contains the call `uuid`. 
+        This could be useful when the client doesn't care about the progress of the call and doesn't want to keep an event stream open while the PBX processes the call.
+        In this case the client may still need to know the call `uuid`, so it can cancel the request. 
+
+        ### Event streaming
+        The API will send back an SSE event stream if the `Accept` header specifies `text/event-stream`.
+        It will stream events as the request gets processed.
+        The events are intentionally limited to contain only the `uuid` and the `state` of the call, because they are streamed back in the context of the POST request and are only meant to convey the real time changes in the `state` of the call.
+        The stream always starts with a `start` event, which contains the call `uuid` and always ends with an `end` event, which indicates the final result of the call request.
+        In between there are a number of other update events, which are sent to the client to indicate interim status changes as the call progresses.
+
+          An error can happen at any point in the process. A client should be prepared to receive an `end` event at any time and should use the `error` property of the event to identify if the call request was successful or not.
+
+          **Note**: The Server-Sent Event (SSE) stream examples are not a JSON array of objects, even though it is visualized like this! This is a stream JSON objects, where each SSE event contains one `call` object. The OpenAPI specification doesn't have a way to specify this currently (see [this issue](https://github.com/OAI/OpenAPI-Specification/issues/396#issuecomment-492287488))
+
+        ## Events
+
+        The usual event sequence looks like this:
+
+        - `start` contains the call `uuid`, which can be used to cancel the call at any time (see DELETE method). This event is always the first one to be sent. It signals the start of the processing of the HTTP request. It is not necessarily related to any call state event. The event that follow are call state events.
+
+        - `caller-dial` indicates when the PBX initiates the call to the `caller` number.
+
+        - `caller-ring` indicates that the `caller` number was successfully called and is ringing. This event is **optional**. It may not be present always. Some devices may be configured to auto-answer the call and may not ring at all. Client should be prepared to not receive this event.
+
+        - `caller-answer` indicates that the `caller` has accepted the call. At this point the connection to the `caller` is successfully established and the process continues with dialing the `callee` number.
+
+        - `dial` indicates that the PBX has initiated the call to the `callee` number (destination).
+
+        - `ring` indicates that the `callee` number was successfully called and that the phone is ringing. This event is **optional**.
+
+        - `answer` indicates that the `callee` number has accepted the call. At this point the connections to the `caller` and `callee` numbers are successfully established.
+
+        - `end` indicates that the processing of the HTTP request has ended. This is *not* a call related event and it is not linked to any call state. On success the `error` parameter will not be present in the event. On error the `error` parameter will be present and will be set to one of the pre-defined errors. The client can use this parameter to differentiate successful from unsuccessful call.
+
+        ## Phone Number Context
+
+        Not all numbers are globally unique. Some are indeed global telephone numbers like the E164 formatted numbers, but many are not. The same number may represent different destinations depending on the context in which it is interpreted. The 112 for example could be an extension number or an emergency number. The number alone doesn't provide enough information to uniquely identify the correct destination, which is why the number `context` is needed.
+
+        See also the `caller_context` and `callee_context` parameter description for a bit more detailed example and for the list of possible context values.
+
+        ## Extension Override
+
+        The `extension` parameter allows to override the extension on behalf of which the call will be originated.
+        
+        If it is set in the request the API will initiate the click-to-dial call on behalf of the extension that is specified in this parameter.
+        
+        This is useful in setups where this API is integrated with CRM systems, that need to be able to initiate calls on behalf of any user.
+
+
+      operationId: originate
+      security:
+        - bearer_auth: []
+      parameters:
+        - in: header
+          name: X-Cloudya-Device-UUID
+          schema:
+            type: string
+            format: uuid
+          description: "Used for authorization while matching an API client request to a conference moderator. Required if the `callee_context` is set to `conference`"
+          required: false
+      requestBody:
+        description: "Create a new call request"
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/call'
+            examples:
+                click-to-dial:
+                  value:
+                    caller: "102"
+                    caller_context: "K9999"
+                    callee: "49123456789"
+                    callee_context: "global"
+                    extension: "102"
+                join conference as user:
+                  value:
+                    caller: "49123456789"
+                    caller_context: global
+                    caller_role: user
+                    callee: "K0001-0001"
+                    callee_context: "conference"
+                    callee_conference_uuid: "058fe04b-ad68-493f-bdd9-67dcb6637696"
+                join conference as moderator:
+                  value:
+                    caller: "49123456789"
+                    caller_context: global
+                    caller_role: moderator
+                    callee: "K0001-0001"
+                    callee_context: "conference"
+                    callee_conference_uuid: "058fe04b-ad68-493f-bdd9-67dcb6637696"
+                join dynamic conference:
+                  value:
+                    caller: "49123456789"
+                    caller_context: global
+                    caller_role: user
+                    callee: "K9999-0000-K9999GZA1N"
+                    callee_context: "conference"
+                    callee_conference_uuid: "058fe04b-ad68-493f-bdd9-67dcb6637696"
+                join meeting:
+                  value:
+                    caller: "49123456789"
+                    caller_context: "global"
+                    caller_role: user
+                    callee: "ETVNLAcYBEFq5doKySPm"
+                    callee_context: "conference"
+                    callee_conference_uuid: "058fe04b-ad68-493f-bdd9-67dcb6637696"
+        required: true
+      responses:
+        "200":
+          description: |-
+            Server-Sent Event (SSE) stream.
+
+            **Note**: This is not a JSON array of objects, even though it is visualized like this! 
+            
+            This is a stream JSON objects, where each SSE event contains one `call` object (see [this issue](https://github.com/OAI/OpenAPI-Specification/issues/396#issuecomment-492287488))
+          headers:
+            X-Request-Id:
+              schema:
+                type: string
+              description: Unique identifier used to track this particular request on the backend
+          content:
+            text/event-stream:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/call"
+              examples:
+                successful call:
+                  value:
+                    - uuid: "715a1333-0174-40ea-8b38-67e289069476"
+                      state: "start"
+                      updated: "2013-10-27T13:01:10:00.069620809+02:00"
+                    - uuid: "715a1333-0174-40ea-8b38-67e289069476"
+                      state: "caller-dial"
+                      updated: "2013-10-27T13:01:10:00.010Z"
+                    - uuid: "715a1333-0174-40ea-8b38-67e289069476"
+                      state: "caller-ring"
+                      updated: "2013-10-27T13:01:11:00.069620809+02:00"
+                    - uuid: "715a1333-0174-40ea-8b38-67e289069476"
+                      state: "caller-answer"
+                      updated: "2013-10-27T13:01:14:00.069620809+02:00"
+                    - uuid: "715a1333-0174-40ea-8b38-67e289069476"
+                      state: "dial"
+                      updated: "2013-10-27T13:01:14:00.010Z"
+                    - uuid: "715a1333-0174-40ea-8b38-67e289069476"
+                      state: "ring"
+                      updated: "2013-10-27T13:01:15:00.069620809+02:00"
+                    - uuid: "715a1333-0174-40ea-8b38-67e289069476"
+                      state: "answer"
+                      updated: "2013-10-27T13:01:18:00.069620809+02:00"
+                    - uuid: "715a1333-0174-40ea-8b38-67e289069476"
+                      state: "end"
+                      updated: "2013-10-27T13:01:18:00.020Z"
+                rejected call (a side):
+                  value:
+                    - uuid: "715a1333-0174-40ea-8b38-67e289069476"
+                      state: "start"
+                      updated: "2013-10-27T13:01:10:00.069620809+02:00"
+                    - uuid: "715a1333-0174-40ea-8b38-67e289069476"
+                      state: "caller-dial"
+                      updated: "2013-10-27T13:01:10:00.069620809+02:00"
+                    - uuid: "715a1333-0174-40ea-8b38-67e289069476"
+                      state: "caller-ring"
+                      updated: "2013-10-27T13:01:11:00.069620809+02:00"
+                    - uuid: "715a1333-0174-40ea-8b38-67e289069476"
+                      state: "end"
+                      updated: "2013-10-27T13:01:13:00.069620809+02:00"
+                      error: "reject"
+        "202":
+          description: |-
+            This reply is sent when the request `Accept` header specifies `application/json`.
+            
+            In this case the API will return only the initial `start` event and will continue processing the call in the background, hence the `202 Accepted` status.
+
+          headers:
+            X-Request-Id:
+              schema:
+                type: string
+              description: Unique identifier used to track this particular request on the backend
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/call"
+              example:
+                uuid: "715a1333-0174-40ea-8b38-67e289069476"
+                caller: "420"
+                caller_context: "K9999"
+                callee: "49123456789"
+                callee_context: "global"
+                extension: "420"
+                direction: outbound
+                state: "start"
+                updated: "2013-10-27T13:01:10:00.069620809+02:00"
+
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/ServerError"
+
+    get:
+      tags:
+        - phone extensions
+      summary: Get call details and state change events in real-time
+      description: |-
+        ## Overview
+        The API streams in real time  the call state update events for **all** the calls of a particular customer.
+
+        ## Usage
+        The `Accept: text/event-stream` header is set
+
+        The SSE stream will send events for any call state change that happens **after** the client SSE connection was established.
+    
+        The stream will not send any past events, not even for calls that were established prior to the SSE connection and that are still ongoing. 
+        
+        This means that it is currently possible to get a `hangup` event without any prior matching `answer` or `ring` events.
+
+      operationId: stream
+      security:
+        - bearer_auth: []
+      responses:
+        "200":
+          description: |-
+            Server-Sent Event (SSE) stream.
+
+            **Note**: The `text/event-stream` response type is **not** a JSON array of objects, even though it is visualized like this! 
+            This is a **stream** JSON objects, where each SSE event contains one `call` object (see [this issue](https://github.com/OAI/OpenAPI-Specification/issues/396#issuecomment-492287488))
+          headers:
+            X-Request-Id:
+              schema:
+                type: string
+              description: Unique identifier used to track this particular request on the backend
+          content:
+            text/event-stream:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/call"
+              examples:
+                stream:
+                  value:
+                    - uuid: "715a1333-0174-40ea-8b38-67e289069476"
+                      state: "ring"
+                      caller: "0891234567"
+                      caller_context: "K9999"
+                      callee: "089453000"
+                      callee_context: "K9999"
+                      direction: "inbound"
+                      extension: "1000"
+                    - uuid: "715a1333-0174-40ea-8b38-67e289069476"
+                      state: "answer"
+                      caller: "0891234567"
+                      caller_context: "K9999"
+                      callee: "089453000"
+                      callee_context: "K9999"
+                      direction: "inbound"
+                      extension: "1000"
+                    - uuid: "715a1333-0174-40ea-8b38-67e289069476"
+                      state: "hangup"
+                      caller: "0891234567"
+                      caller_context: "K9999"
+                      callee: "089453000"
+                      callee_context: "K9999"
+                      direction: "inbound"
+                      extension: "1000"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "406":
+          $ref: "#/components/responses/NotAcceptable"
+        "500":
+          $ref: "#/components/responses/ServerError"
+  /extensions/phone/calls/{uuid}:
+    delete:
+      tags:
+        - phone extensions
+      summary: Cancel an in-progress call
+      description: |-
+        This endpoint can be used to cancel a call which is in the process of being established.
+      parameters:
+        - in: path
+          name: uuid
+          description: Call UUID
+          required: true
+          schema:
+            type: string
+            pattern: '^\w{8}-\w{4}-\w{4}-\w{4}-\w{12}$'
+      operationId: cancel
+      security:
+        - bearer_auth: []
+      responses:
+        "204":
+          description: No Content
+          headers:
+            X-Request-Id:
+              schema:
+                type: string
+              description: Unique identifier used to track this particular request on the backend
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/ServerError"
+components:
+  schemas:
+    extensionData:
+      type: object
+      properties:
+        uuid:
+          type: string
+          example: "100@KLMN0"
+        extension_number:
+          type: string
+          example: "100"
+        name:
+          type: string
+          example: "office"
+    jwksData:
+      type: object
+      properties:
+        alg:
+          type: string
+          description: Algorithm
+          example: "RS512"
+        e:
+          type: string
+          description: Public exponent
+          example: "AQAB"
+        kid:
+          type: string
+          description: Key ID
+          example: "5813fce7f8e942128a1f324cd5d78c4b"
+        kty:
+          type: string
+          description: Key Type
+          example: "RSA"
+        n:
+          type: string
+          description: Public modulus
+          example: "0vx7agoebGcQSuuPiLJXZptN9nndrQmbXEps2aiAFbWhM78LhWx4cbbfAAtVT86zwu1RK7aPFFxuhDR1L6tSoc_BJECPebWKRXjBZCiFV4n3oknjhMstn64tZ_2W-5JsGY4Hc5n9yBXArwl93lqt7_RN5w6Cf0h4QyQ5v-65YGjQR0_FDW2QvzqY368QQMicAtaSqzs8KJZgnYb9c7d0zgdAZHzu6qMQvRL5hajrn1n91CbOpbISD08qNLyrdkt-bFTWhAI4vMQFh6WeZu0fM4lFd2NcRwr3XPksINHaQ-G_xBniIqbw0Ls1jF44-csFCur-kEgU8awapJzKnqDKgw"
+        use:
+          type: string
+          description: Public key use
+          example: "sig"
+    tokens:
+      type: object
+      properties:
+        access-token:
+          type: string
+          format: jwt
+        refresh-token:
+          type: string
+          format: jwt
+    publicKey:
+      type: object
+      properties:
+        keys:
+          type: array
+          items:
+            $ref: '#/components/schemas/jwksData'
+    call:
+      type: object
+      properties:
+        uuid:
+          type: string
+          format: uuid
+          description: "Unique call request identifier, which can be used to cancel the call, while it's still in progress"
+        caller:
+          type: string
+          description: "`R/W` `required` the call leg number. It must be set by the client. The number must not contain any prefixes like `00` or `+`"
+        caller_context:
+          type: string
+          enum:
+           - <K-Account>
+           - global
+          description: |-
+            `R/W` `optional` can be set by the client. If it's empty the API will set the context to the `K-Account` and will interpret the `caller` number as internal extension number.
+
+            In general, this parameter defines in which context to interpret the number in order to identify the correct destination represented by the number. Not all phone numbers are globally unique. For example the number 112 in the context of an internal PBX numbering plan of a customer has the meaning of the **extension** 112, whereas the same number in the context of the emergency numbers has a completely different interpretation. Also the same 112 number can be used differently by the different customers. This is why it's required to know in which customer context to interpret some numbers.
+
+            There is a huge difference if a click-to-dial request results in calling a company desktop phone or the emergency services, which is why the context of a number is an integral part of the requests. The context can also be though of as the "type" of the number.
+        caller_device:
+          type: string
+          description: "`R/O` `optional` This property is only present in API replies in the case of call-through calls. It contains the primary device of the `caller` number"
+        caller_role:
+          type: string
+          enum:
+            - user
+            - moderator
+          description: "`R/W` `optional` Set by the client. Required only if the `callee_context` is set to `conference`"
+        callee:
+          type: string
+          description: "`R/W` `required` the call leg number or identifier. It must be set by the client. The number must not contain any prefixes like `00` or `+`. This is not necessarily a number, but could also contain a conference or meeting `name`. See the `callee_context` parameter."
+        callee_context:
+          type: string
+          enum:
+           - <K-Account>
+           - global
+           - conference
+          description: "`R/W` `optional` can be set by the client. If empty the API will set the context to the `K-Account` and will interpret the `callee` number as internal extension. See the `caller_context` parameter description for a more detailed generic explanation of the context parameters."
+        callee_conference_uuid:
+          type: string
+          format: uuid
+          description: "`R/W` `optional` set by the client. Required only if the `callee_context` is set to `conference`. It represents the active conference instance UUID"
+        state:
+          type: string
+          enum:
+           - start
+           - caller-wait
+           - caller-dial
+           - caller-ring
+           - caller-answer
+           - dial
+           - ring
+           - answer
+           - hangup
+           - end
+        updated:
+          type: string
+          format: date-time
+          description: "The time when the state change happened. RFC3339 with nanoseconds and timezone (e.g., 2025-09-23T16:51:22.954969226+02:00)"
+        extension:
+          description: "The extension to which this call applies. This parameter serves two purposes. It allows to interpret the direction of the call from the correct extension perspective. Additionally, it allows to set both the caller and callee numbers to a global E164 number and still be able to link a call to an extension."
+          type: string
+        customer:
+          type: string
+          description: "Customer K-Account."
+        direction:
+          description: "The direction of the call from the perspective of the `extension`."
+          type: string
+          enum:
+            - inbound
+            - outbound
+        timeout:
+          type: integer
+          description: "`R/W` `optional` may be set by the client on click-to-dial requests. Default value is 20 seconds, maximum value is 120 seconds. It represents the time to wait for an answer on the `caller` side of the call. It has no effect on the `callee` side."
+        error:
+          type: string
+          enum:
+           - timeout
+           - busy
+           - cancel
+           - reject
+           - unspecified
+          description: "`optional` Set in case of error"
+    state:
+      type: object
+      properties:
+        customer:
+          type: string
+          description: "Customer K-Account."
+        extension:
+          type: string
+          description: "Extension of the user."
+        line:
+          type: string
+          description: "The user telephony line state."
+          enum:
+            - unknown
+            - offline
+            - idle
+            - ringing
+            - in-use
+        presence:
+          type: string
+          description: "The user presence state."
+          enum:
+            - offline
+            - available
+            - away
+            - busy
+            - dnd
+            - 'null'
+        updated:
+          type: string
+          format: date-time
+          description: "The time of the status change. RFC3339 with nanoseconds and timezone (e.g., 2025-09-23T16:51:22.954969226+02:00)"          
+    error:
+      type: object
+      properties:
+        error:
+          type: string
+      example:
+        error: "some error message"
+  responses:
+    BadRequest:
+      description: One or more request parameters failed validation
+      headers:
+        X-Request-Id:
+          schema:
+            type: string
+          description: Unique identifier used to track this particular request on the backend
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/error"
+    Unauthorized:
+      description: Unauthorized
+      headers:
+        X-Request-Id:
+          schema:
+            type: string
+          description: Unique identifier used to track this particular request on the backend
+    Forbidden:
+      description: Authenticated user is not allowed to perform the action or may not have a license
+      headers:
+        X-Request-Id:
+          schema:
+            type: string
+          description: Unique identifier used to track this particular request on the backend
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/error"
+    NotFound:
+      description: Requested object (call) does not exist
+      headers:
+        X-Request-Id:
+          schema:
+            type: string
+          description: Unique identifier used to track this particular request on the backend
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/error"
+    NotAcceptable:
+      description: Requested MIME type is not supported
+      headers:
+        X-Request-Id:
+          schema:
+            type: string
+          description: Unique identifier used to track this particular request on the backend
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/error"
+    Conflict:
+      description: The request will result in a conflict
+      headers:
+        X-Request-Id:
+          schema:
+            type: string
+          description: Unique identifier used to track this particular request on the backend
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/error"
+    ServerError:
+      description: Unexpected server error
+      headers:
+        X-Request-Id:
+          schema:
+            type: string
+          description: Unique identifier used to track this particular request on the backend
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/error"
+  securitySchemes:
+    bearer_auth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+    refresh_token_auth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: Method to refresh the access token. Use the refresh token as bearer token here.
