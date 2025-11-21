@@ -18,7 +18,7 @@
 
 The NFON CTI API extends the NFON telephone system with a powerful interface for Computer Telephony Integration (CTI). It provides advanced capabilities such as call control, event streaming, and device management, enabling seamless integration of cloud telephony with third-party business applications and collaboration tools. Designed for server-to-server communication, it works with any device — hardphone, softphone, or mobile app — and empowers developers to create customised solutions that enhance communication and collaboration.  
 
-| ![NFON CTI API architecture diagram](assets/cti-api-architecture.webp) | The **NFON CTI API** enables access to data in the context of a *K-Account*.<br><br>Ideally, a third-party web or desktop app running on the client communicates with the third-party server to enable the necessary functions. |
+| ![NFON CTI API architecture diagram](assets/cti-api-architecture.webp) | The **NFON CTI API** enables access to data in the context of a tenant (*K-Account*).<br><br>Ideally, a third-party web or desktop app running on the client communicates with the third-party server to enable the necessary functions. |
 |:--:|--|
 
 ### What You Can Do With This API  
@@ -47,15 +47,16 @@ By accessing and using the NFON CTI API, you agree to the [terms of use](https:/
 - Please refer to the [latest API documentation](https://nfon-ag.github.io/CTI-API/).
 
 #### Supported use cases: 
-The CTI API has been designed for incoming and outgoing calls. Currently, the only officially supported use case for which the CTI API has been tested and released is for incoming calls that are directly received by an extension connected to a single terminal.
+The CTI API has been designed for incoming and outgoing calls. Currently, the only officially supported use case for which the CTI API has been tested and released is for incoming calls that are directly received by an extension connected to a single device.
 
 Functions currently not supported:
 - Group calls
 - Skill-based calls
-- Upstream queues
+- Queue-based calls
 - Call scenarios in which a call is forwarded
+- Conferences with several participants using multiple devices per extension. Only one device may be assigned to each extension. 
 
-Conferences with several participants using multiple terminals per extension. Only one device may be assigned to each extension. We are continually making improvements to support additional call scenarios and to optimise the authentication process. If these developments introduce a risk of failure to other components (i.e. a 'breaking change'), we will notify you well in advance.
+We are continually making improvements to support additional call scenarios and to optimise the authentication process. If these developments introduce a risk of failure to other components (i.e. a 'breaking change'), we will notify you well in advance.
 
 ---
 
@@ -86,34 +87,44 @@ Check the official [API documentation](https://nfon-ag.github.io/CTI-API/) for l
 
 ### At a glance
 
-The most important endpoints are listed below: 
+The NFON CTI API provides endpoints to manage and monitor phone extensions in real time.  
+Below is an overview of the most commonly used functions:
 
-- **Read out extension configuration ‘Get /extension/phone/data’**
+#### Read extensions configuration
+**Endpoint:** `GET: /extensions/phone/data`
 
-  This endpoint provides an overview of all configured extensions on a K-Account, including both the number and the name assigned to the extension.
+Retrieves all configured extensions for a tenant (**K-Account**), including the **extension number** and **assigned name**.  
+Useful for displaying or synchronizing PBX configuration data.
 
-- **Read out line status ‘Get /extensions/phone/states’**
+#### Read line status
+**Endpoint** `GET: /extensions/phone/states`
   
-  This endpoint allows you to read out the line status for each extension.
-  This allows the respective availability status for each extension to be displayed in third-party applications.
-  When connecting for the first time, the status of all configured extensions is displayed.
+Retrieves the **current line status** (e.g., offline, ringing, in-use) of all configured extensions, either as one-time snapshot or continuous stream.  
+This enables third-party applications to display real-time user availability.  
+In streaming mode, the endpoint first returns the full set of extension states, followed by real-time updates.
 
-- **Start call ‘Post /extensions/phone/calls’**
+#### Start call
+**Endpoint** `POST: /extensions/phone/calls`
 
-  This endpoint initiates a call for an extension.
-  First, the call is made to the A number and, after acceptance, the call is established to the B number.
-  The user can individually specify which end device rings for the user of the A number.
-  A UUID is transmitted as the return code for this endpoint, which can be used to end calls.
+Initiates an outgoing call for a specific extension.  
+The API first dials the **A-number** (caller). Once accepted, it connects the call to the **B-number** (callee).  
+You can specify which device should ring for the A-number.  
+Returns a **UUID** that uniquely identifies the call and can be used to end it later.
 
-- **End call ‘Delete /extensions/phone/calls/{uuid}’**
+#### End call
+**Endpoint** `DELETE: /extensions/phone/calls/{uuid}`
 
-  Ends a call initiated via the API using the returned UUID.
+Terminates a call started via the API, identified by the **UUID** returned by the *Start a Call* endpoint.
 
-- **Stream call details ‘Get /extensions/phone/calls’**
 
-  This endpoint enables the streaming of all incoming and outgoing telephone events of a K-Account in real time.
-  For complex environments, it is necessary to take into account the restrictions indicated above.
-  Unlike the endpoint for reading the line status (see above 2. Read out line status), the current status of all extensions is not displayed when connecting for the first time.
+#### Stream call details
+**Endpoint** `GET: /extensions/phone/calls`
+
+Streams all **incoming and outgoing call events** for a tenant (**K-Account**) in **real time**.  
+Ideal for live monitoring dashboards or analytics integrations.  
+Unlike the *Read Line Status* endpoint, the initial connection does **not** return the current status of all extensions — only **new call events** after connection.
+> For complex environments, it is necessary to take into account the *Supported uses cases* indicated above.
+
 
 ## API Credentials
 
@@ -169,7 +180,7 @@ Below you’ll find working examples for API operations using various programmin
 
 > 💡 **Cannot find your programming language of choice?** We recommend you to use an **AI assistant** to rewrite the examples to other programming languages. 
 
-#### JSON example: Get the data of phone extensions of your account.
+#### JSON example: Get the data of phone extensions of your tenant (K-Account).
 - [with Go (Golang)](./examples/phone-data/get-phone-data.example.go)
 - [with Java](./examples/phone-data/NfonApiExample.java)
 - [with Node.js / Javascript](./examples/phone-data/get-phone-data.example.mjs)
