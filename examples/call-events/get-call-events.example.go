@@ -1,19 +1,31 @@
-/*
- * Copyright (c) 2025 NFON AG
- * NFON CTI API SSE example: Get call details and state change events
- *
- * What it does:
- * 1. Logs in with API username and password to obtain an access token
- * 2. Opens a Server-Sent Events (SSE) stream to receive call details and state changes
- * 3. Continuously logs incoming events until the process is stopped
- *
- * Steps to run:
- * 1. Replace <YOUR API USERNAME> and <YOUR API PASSWORD>
- * 2. Run: go run get-call-events.example.go
- *
- * Requirements:
- * - Go 1.18+
- */
+// Copyright 2025 NFON AG
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+//
+//
+// NFON CTI API SSE example: Get call details and state change events
+//
+// What it does:
+// 1. Logs in with API username and password to obtain an access token
+// 2. Opens a Server-Sent Events (SSE) stream to receive call details and state changes
+// 3. Continuously logs incoming events until the process is stopped
+//
+// Steps to run:
+// 1. Replace <YOUR API USERNAME> and <YOUR API PASSWORD>
+// 2. Run: go run get-call-events.example.go
+//
+// Requirements:
+// - Go 1.18+
 
 package main
 
