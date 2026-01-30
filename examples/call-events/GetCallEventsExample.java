@@ -21,9 +21,14 @@
 // 3. Continuously logs incoming events until terminated
 //
 // Steps to run:
-// 1. Replace <YOUR API USERNAME> and <YOUR API PASSWORD>
-// 2. Compile: javac GetCallEventsExample.java
-// 3. Run: java GetCallEventsExample
+// 1. Set environment variables:
+//    Linux/macOS:        export NFON_API_USERNAME='<YOUR API USERNAME>'
+//                        export NFON_API_PASSWORD='<YOUR API PASSWORD>'
+//    Windows CMD:        set NFON_API_USERNAME=<YOUR API USERNAME>
+//                        set NFON_API_PASSWORD=<YOUR API PASSWORD>
+//    Windows PowerShell: $env:NFON_API_USERNAME='<YOUR API USERNAME>'
+//                        $env:NFON_API_PASSWORD='<YOUR API PASSWORD>'
+// 2. Run: java GetCallEventsExample.java
 //
 // Requirements:
 // - Java 11+
@@ -36,11 +41,15 @@ import java.nio.charset.StandardCharsets;
 
 public class GetCallEventsExample {
 
-    private static final String USERNAME = "<YOUR API USERNAME>";
-    private static final String PASSWORD = "<YOUR API PASSWORD>";
+    private static final String USERNAME = System.getenv("NFON_API_USERNAME");
+    private static final String PASSWORD = System.getenv("NFON_API_PASSWORD");
 
     public static void main(String[] args) {
         try {
+            if (USERNAME == null || USERNAME.isEmpty() || PASSWORD == null || PASSWORD.isEmpty()) {
+                System.err.println("Error: NFON_API_USERNAME and NFON_API_PASSWORD must be set");
+                System.exit(1);
+            }
             String token = getAccessToken();
             System.out.println("Access token retrieved successfully.");
             openEventStream(token);
