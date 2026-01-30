@@ -21,7 +21,13 @@
 // 3. Continuously logs incoming events until the process is stopped
 //
 // Steps to run:
-// 1. Replace <YOUR API USERNAME> and <YOUR API PASSWORD>
+// 1. Set environment variables:
+//    Linux/macOS:        export NFON_API_USERNAME='<YOUR API USERNAME>'
+//                        export NFON_API_PASSWORD='<YOUR API PASSWORD>'
+//    Windows CMD:        set NFON_API_USERNAME=<YOUR API USERNAME>
+//                        set NFON_API_PASSWORD=<YOUR API PASSWORD>
+//    Windows PowerShell: $env:NFON_API_USERNAME='<YOUR API USERNAME>'
+//                        $env:NFON_API_PASSWORD='<YOUR API PASSWORD>'
 // 2. Run: go run get-call-events.example.go
 //
 // Requirements:
@@ -40,12 +46,16 @@ import (
 	"time"
 )
 
-const (
-	username = "<YOUR API USERNAME>"
-	password = "<YOUR API PASSWORD>"
+var (
+	username = os.Getenv("NFON_API_USERNAME")
+	password = os.Getenv("NFON_API_PASSWORD")
 )
 
 func main() {
+	if username == "" || password == "" {
+		fmt.Println("Error: NFON_API_USERNAME and NFON_API_PASSWORD must be set")
+		os.Exit(1)
+	}
 	token, err := getAccessToken()
 	if err != nil {
 		fmt.Println("Error retrieving token:", err)

@@ -178,11 +178,13 @@ curl --location --request PUT 'https://providersupportdata.cloud-cfg.com/v1/logi
 
 Below you’ll find working examples for API operations using various programming languages. These are designed to help you get started quickly and understand how to authenticate and interact with the NFON CTI API.
 
-> 💡 **Cannot find your programming language of choice?** We recommend you to use an **AI assistant** to rewrite the examples to other programming languages. 
+> [!TIP]
+> **Cannot find your programming language of choice?**
+> We recommend using an **AI assistant** to rewrite the examples in other programming languages.
 
 #### JSON example: Get the data of phone extensions of your tenant (K-Account).
 - [with Go (Golang)](./examples/phone-data/get-phone-data.example.go)
-- [with Java](./examples/phone-data/NfonApiExample.java)
+- [with Java](./examples/phone-data/GetPhoneDataExample.java)
 - [with Node.js / Javascript](./examples/phone-data/get-phone-data.example.mjs)
 
 #### Server-Sent Events (SSE) stream example: Get call details and state change events

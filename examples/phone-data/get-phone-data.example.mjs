@@ -20,14 +20,20 @@
 // 2. Uses the token to send a GET request to retrieve phone extensions data
 //
 // Steps to run:
-// 1. Replace <YOUR API USERNAME> and <YOUR API PASSWORD> with your credentials
-// 2. Run: node get-phone-extensions.example.mjs
+// 1. Set environment variables:
+//    Linux/macOS:        export NFON_API_USERNAME='<YOUR API USERNAME>'
+//                        export NFON_API_PASSWORD='<YOUR API PASSWORD>'
+//    Windows CMD:        set NFON_API_USERNAME=<YOUR API USERNAME>
+//                        set NFON_API_PASSWORD=<YOUR API PASSWORD>
+//    Windows PowerShell: $env:NFON_API_USERNAME='<YOUR API USERNAME>'
+//                        $env:NFON_API_PASSWORD='<YOUR API PASSWORD>'
+// 2. Run: node get-phone-data.example.mjs
 //
 // Requirements:
 // - Node.js 18+ (native fetch support)
 
-const USERNAME = "<YOUR API USERNAME>";
-const PASSWORD = "<YOUR API PASSWORD>";
+const USERNAME = process.env.NFON_API_USERNAME;
+const PASSWORD = process.env.NFON_API_PASSWORD;
 
 /**
  * Step 1: Authenticate with the NFON API to obtain an access token
@@ -79,6 +85,10 @@ async function getPhoneExtensionsData(accessToken) {
  */
 (async () => {
   try {
+    if (!USERNAME || !PASSWORD) {
+      console.error("Error: NFON_API_USERNAME and NFON_API_PASSWORD must be set");
+      process.exit(1);
+    }
     // Login and retrieve token
     const token = await getAccessToken();
     console.log("Access token retrieved successfully.");
