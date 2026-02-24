@@ -46,9 +46,16 @@ import (
 	"time"
 )
 
+const (
+	// TODO: Change these values to match your application
+	appName    = "NFON-GitHub-Example" // Replace with your application name
+	appVersion = "1.0"                 // Replace with your application version
+)
+
 var (
-	username = os.Getenv("NFON_API_USERNAME")
-	password = os.Getenv("NFON_API_PASSWORD")
+	username  = os.Getenv("NFON_API_USERNAME")
+	password  = os.Getenv("NFON_API_PASSWORD")
+	userAgent = appName + "/" + appVersion
 )
 
 func main() {
@@ -83,6 +90,7 @@ func getAccessToken() (string, error) {
 	}
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Accept", "application/json")
+	req.Header.Set("User-Agent", userAgent)
 
 	client := &http.Client{Timeout: 30 * time.Second}
 	resp, err := client.Do(req)
@@ -114,6 +122,7 @@ func streamEvents(token string) error {
 	}
 	req.Header.Set("Accept", "text/event-stream")
 	req.Header.Set("Authorization", "Bearer "+token)
+	req.Header.Set("User-Agent", userAgent)
 
 	client := &http.Client{}
 	resp, err := client.Do(req)

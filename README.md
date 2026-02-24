@@ -12,7 +12,10 @@
   - [Introduction](#introduction-1)
   - [Create a new Access Token](#create-a-new-access-token)
   - [Refresh the Access Token](#refresh-the-access-token)
-  - [Examples](#examples)
+- [User-Agent Header](#user-agent-header)
+  - [Why is this required?](#why-is-this-required)
+  - [Implementation](#implementation)
+- [Examples](#examples)
 
 ## Introduction  
 
@@ -154,6 +157,7 @@ You can create a new pair of Access and Refresh token by sending your **API User
 curl --location 'https://providersupportdata.cloud-cfg.com/v1/login' \
 --header 'Content-Type: application/json' \
 --header 'Accept: application/json' \
+--header 'User-Agent: my-crm-app/1.5.1 (KXXXX)' \
 --data-raw '{
   "username": "<YOUR API USERNAME>",
   "password": "<YOUR API PASSWORD>"
@@ -169,12 +173,45 @@ You can get a new pair of Access and Refresh token by sending your **Refresh Tok
 ```
 curl --location --request PUT 'https://providersupportdata.cloud-cfg.com/v1/login' \
 --header 'Accept: application/json' \
+--header 'User-Agent: my-crm-app/1.5.1 (KXXXX)' \
 --header 'Authorization: Bearer eyJhbGciOiJSUzUxMiIsImtpZCI6ImVkODEwMDM4MGUwMjE1O...'
 ```
 
----
+## User-Agent Header
 
-### Examples
+When integrating with the NFON APIs, please include a **User-Agent header** in all HTTP requests with the following format:
+
+```
+<productname>/<productversion> (<K-Account>)
+```
+
+**Example:**
+```
+my-crm-app/1.5.1 (KXXXX)
+```
+
+### Why is this required?
+
+Including your application name, version, and account in the User-Agent helps NFON's technical support team:
+
+- **Quickly identify your application** in case of issues or unusual activity
+- **Provide faster support** by understanding which integration is affected
+- **Contact you proactively** if we detect any problems with your integration
+
+### Implementation
+
+All code examples in this repository include configurable constants at the top of each file:
+
+```go
+const (
+    appName    = "NFON-GitHub-Example"  // Replace with your application name
+    appVersion = "1.0"                  // Replace with your application version
+)
+```
+
+Simply update these values to match your application before deploying to production.
+
+## Examples
 
 Below you’ll find working examples for API operations using various programming languages. These are designed to help you get started quickly and understand how to authenticate and interact with the NFON CTI API.
 
