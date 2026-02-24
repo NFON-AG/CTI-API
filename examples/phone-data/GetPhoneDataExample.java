@@ -40,6 +40,11 @@ import java.nio.charset.StandardCharsets;
 
 public class GetPhoneDataExample {
 
+    // TODO: Change these values to match your application
+    private static final String APP_NAME = "NFON-GitHub-Example";  // Replace with your application name
+    private static final String APP_VERSION = "1.0";               // Replace with your application version
+    private static final String USER_AGENT = APP_NAME + "/" + APP_VERSION;
+
     private static final String USERNAME = System.getenv("NFON_API_USERNAME");
     private static final String PASSWORD = System.getenv("NFON_API_PASSWORD");
 
@@ -65,6 +70,7 @@ public class GetPhoneDataExample {
         conn.setRequestMethod("POST");
         conn.setRequestProperty("Content-Type", "application/json");
         conn.setRequestProperty("Accept", "application/json");
+        conn.setRequestProperty("User-Agent", USER_AGENT);
         conn.setDoOutput(true);
 
         String jsonInput = String.format("{\"username\":\"%s\", \"password\":\"%s\"}", USERNAME, PASSWORD);
@@ -90,6 +96,7 @@ public class GetPhoneDataExample {
         conn.setRequestMethod("GET");
         conn.setRequestProperty("Accept", "application/json");
         conn.setRequestProperty("Authorization", "Bearer " + token);
+        conn.setRequestProperty("User-Agent", USER_AGENT);
 
         BufferedReader br = new BufferedReader(new InputStreamReader(conn.getInputStream(), StandardCharsets.UTF_8));
         StringBuilder response = new StringBuilder();

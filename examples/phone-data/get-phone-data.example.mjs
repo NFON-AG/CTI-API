@@ -32,6 +32,11 @@
 // Requirements:
 // - Node.js 18+ (native fetch support)
 
+// TODO: Change these values to match your application
+const APP_NAME = "NFON-GitHub-Example";  // Replace with your application name
+const APP_VERSION = "1.0";               // Replace with your application version
+const USER_AGENT = `${APP_NAME}/${APP_VERSION}`;
+
 const USERNAME = process.env.NFON_API_USERNAME;
 const PASSWORD = process.env.NFON_API_PASSWORD;
 
@@ -44,6 +49,7 @@ async function getAccessToken() {
     headers: {
       "Content-Type": "application/json",
       "Accept": "application/json",
+      "User-Agent": USER_AGENT,
     },
     body: JSON.stringify({
       username: USERNAME,
@@ -69,7 +75,8 @@ async function getPhoneExtensionsData(accessToken) {
     method: "GET",
     headers: {
       "Accept": "application/json",
-      "Authorization": `Bearer ${accessToken}`, // pass token as Bearer
+      "Authorization": `Bearer ${accessToken}`,
+      "User-Agent": USER_AGENT,
     },
   });
 
